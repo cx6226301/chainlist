@@ -1,0 +1,322 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport"
+          content="width=device-width,initial-scale=1.0, minimum-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+    <title>SSNS分红专用</title>
+    <script src="./js/jquery.min.js"></script>
+</head>
+
+<body>
+<div class="body">
+    <p id="msg" class="red">请在钱包里面打开此页面!</p>
+    <div class="amount-div">
+        <label>分红SSNS数量</label>
+    </div>
+    <div>
+        <input id="amount" placeholder="请输入SSNS数量">
+    </div>
+    <div>
+        <button id="approve" disabled="disabled" onclick="approve()">授权</button>
+    </div>
+    <div>
+        <button id="send" disabled="disabled" onclick="sendReward()">一键分红</button>
+    </div>
+    <div>
+        当前总池子：<font class="red" id="total">计算中...</font>
+    </div>
+    <div>
+        当前分红人数：<font class="red" id="bonus_num">计算中...</font>
+    </div>
+    <div>
+        分红列表：
+        <table id="bonus_table">
+
+        </table>
+    </div>
+</div>
+<style>
+    .body {
+        text-align: center;
+        padding: 70px 30px;
+    }
+    #bonus_table{
+        width: 100%;
+    }
+    .body div {
+        margin-top: 20px;
+    }
+
+    .amount-div {
+        margin-top: 50px !important;
+    }
+
+    #msg {
+        font-size: 26px;
+    }
+
+    #amount {
+        width: 100%;
+        line-height: 30px;
+    }
+
+    #send,
+    #approve {
+        width: 100%;
+        height: 50px;
+        background: cornflowerblue;
+        color: white;
+    }
+
+    .red {
+        color: red;
+    }
+
+    button[disabled=disabled] {
+        background: lightgray !important;
+    }
+</style>
+<script src="https://cdn.ethers.io/lib/ethers-5.2.umd.min.js" type="text/javascript"></script>
+<script>
+
+    const contract_Address = "0x36612E8073313aF847fb00EDD0F68A1570b41522";
+    const contract_ABI = [{"inputs":[],"stateMutability":"nonpayable","type":"constructor"},{"anonymous":false,"inputs":[{"indexed":true,"internalType":"address","name":"previousOwner","type":"address"},{"indexed":true,"internalType":"address","name":"newOwner","type":"address"}],"name":"OwnershipTransferred","type":"event"},{"inputs":[],"name":"_pair","outputs":[{"internalType":"address","name":"","type":"address"}],"stateMutability":"view","type":"function"},{"inputs":[],"name":"_reward_token","outputs":[{"internalType":"address","name":"","type":"address"}],"stateMutability":"view","type":"function"},{"inputs":[{"internalType":"uint256","name":"","type":"uint256"}],"name":"_shields","outputs":[{"internalType":"address","name":"","type":"address"}],"stateMutability":"view","type":"function"},{"inputs":[{"internalType":"address","name":"newOwner","type":"address"}],"name":"changeOwner","outputs":[],"stateMutability":"nonpayable","type":"function"},{"inputs":[],"name":"owner","outputs":[{"internalType":"address","name":"","type":"address"}],"stateMutability":"view","type":"function"},{"inputs":[],"name":"renounceOwnership","outputs":[],"stateMutability":"nonpayable","type":"function"},{"inputs":[{"internalType":"address[]","name":"accounts","type":"address[]"},{"internalType":"uint256","name":"reward","type":"uint256"}],"name":"sendReward","outputs":[],"stateMutability":"nonpayable","type":"function"},{"inputs":[{"internalType":"address","name":"param","type":"address"},{"internalType":"uint256","name":"status","type":"uint256"}],"name":"setAddress","outputs":[],"stateMutability":"nonpayable","type":"function"},{"inputs":[{"internalType":"address","name":"newOwner","type":"address"}],"name":"transferOwnership","outputs":[],"stateMutability":"nonpayable","type":"function"},{"stateMutability":"payable","type":"receive"}];
+    const token_contract = "0xB3778bA684b58e87A9f05fE0B1681eC2D7252a94";
+    const token_abi = [{ "constant": true, "inputs": [], "name": "name", "outputs": [{ "name": "", "type": "string" }], "payable": false, "stateMutability": "view", "type": "function" }, { "constant": false, "inputs": [{ "name": "_spender", "type": "address" }, { "name": "_value", "type": "uint256" }], "name": "approve", "outputs": [{ "name": "success", "type": "bool" }], "payable": false, "stateMutability": "nonpayable", "type": "function" }, { "constant": true, "inputs": [], "name": "totalSupply", "outputs": [{ "name": "", "type": "uint256" }], "payable": false, "stateMutability": "view", "type": "function" }, { "constant": false, "inputs": [{ "name": "_from", "type": "address" }, { "name": "_to", "type": "address" }, { "name": "_value", "type": "uint256" }], "name": "transferFrom", "outputs": [{ "name": "success", "type": "bool" }], "payable": false, "stateMutability": "nonpayable", "type": "function" }, { "constant": true, "inputs": [], "name": "decimals", "outputs": [{ "name": "", "type": "uint8" }], "payable": false, "stateMutability": "view", "type": "function" }, { "constant": true, "inputs": [{ "name": "_owner", "type": "address" }], "name": "balanceOf", "outputs": [{ "name": "balance", "type": "uint256" }], "payable": false, "stateMutability": "view", "type": "function" }, { "constant": true, "inputs": [], "name": "symbol", "outputs": [{ "name": "", "type": "string" }], "payable": false, "stateMutability": "view", "type": "function" }, { "constant": false, "inputs": [{ "name": "_to", "type": "address" }, { "name": "_value", "type": "uint256" }], "name": "transfer", "outputs": [{ "name": "success", "type": "bool" }], "payable": false, "stateMutability": "nonpayable", "type": "function" }, { "constant": true, "inputs": [{ "name": "_owner", "type": "address" }, { "name": "_spender", "type": "address" }], "name": "allowance", "outputs": [{ "name": "remaining", "type": "uint256" }], "payable": false, "stateMutability": "view", "type": "function" }, { "inputs": [{ "name": "_initialAmount", "type": "uint256" }, { "name": "_tokenName", "type": "string" }, { "name": "_decimalUnits", "type": "uint8" }, { "name": "_tokenSymbol", "type": "string" }], "payable": false, "stateMutability": "nonpayable", "type": "constructor" }, { "anonymous": false, "inputs": [{ "indexed": true, "name": "_from", "type": "address" }, { "indexed": true, "name": "_to", "type": "address" }, { "indexed": false, "name": "_value", "type": "uint256" }], "name": "Transfer", "type": "event" }, { "anonymous": false, "inputs": [{ "indexed": true, "name": "_owner", "type": "address" }, { "indexed": true, "name": "_spender", "type": "address" }, { "indexed": false, "name": "_value", "type": "uint256" }], "name": "Approval", "type": "event" }];
+    const token_decimal = 18;
+
+    const pair_Address = "0xF84Af7A78Fc9E68b732eD3621dc7c2dE6Ec5b7cd";
+
+    let contract;
+    let token;
+    let pair;
+    let signer;
+    let account;
+    let shield;
+    let shield2;
+    var status = false;
+    console.log(window.ethereum)
+    if (window.ethereum) {
+        status = true;
+        $('#msg').html('')
+        /* 3. Prompt user to sign in to MetaMask */
+        const provider = new ethers.providers.Web3Provider(window.ethereum);
+        // const rpcUrl='https://data-seed-prebsc-1-s1.binance.org:8545';
+        // const provider = new ethers.providers.JsonRpcProvider(rpcUrl);
+        console.log(provider)
+        provider.send("eth_requestAccounts", []).then(() => {
+            provider.listAccounts().then((accounts) => {
+                signer = provider.getSigner(accounts[0]);
+                account = accounts[0]
+
+                /* 3.1 Create instance of pet smart contract */
+                contract = new ethers.Contract(
+                    contract_Address,
+                    contract_ABI,
+                    signer
+                );
+                console.log('contract')
+
+                token = new ethers.Contract(
+                    token_contract,
+                    token_abi,
+                    signer
+                );
+
+                pair = new ethers.Contract(
+                    pair_Address,
+                    token_abi,
+                    signer
+                );
+            });
+        });
+    }
+    var address_list = [];
+    var balance_list = [];
+    var total = 0;
+    var count = 0;
+    function get_list(p = 1) {
+        console.log(p)
+        $.get({
+            url: "https://www.oklink.com/api/v5/explorer/token/position-list?chainShortName=BSC&tokenContractAddress="+pair_Address+"&limit=100&page="+p,
+            headers: { "Ok-Access-Key": "bf66c464-cf6b-437a-8761-95a66d4e98c3" }
+        }).done(function(data) {
+            if (data.code == '0'&&data.data[0].positionList.length>0) {
+                try {
+                    var list = data.data[0].positionList;
+                    for (var k = 0, length = list.length; k < length; k++) {
+                        if(list[k].holderAddress.toLowerCase()==shield.toLowerCase()) continue
+                        if(list[k].holderAddress.toLowerCase()==shield2.toLowerCase()) continue
+                        if(list[k].amount<=0) continue
+                        address_list.push(list[k].holderAddress)
+                        balance_list.push(list[k].amount)
+                        count++
+                    }
+                    // // console.log(data)
+                    // count+=list.length;
+                    // console.log(list.length)
+                    if(list.length>=100){
+                        get_list(++p)
+                    }
+                    console.log('balance_list:'+balance_list)
+                } catch (e) {
+                    console.log('error:' + e)
+                }
+            }
+        })
+    }
+    const get_total = async () => {
+        console.log(111)
+        shield = await contract._shields(0)
+        shield2 = await contract._shields(1)
+        console.log(shield)
+        total = (multiply(await pair.totalSupply())-multiply(await pair.balanceOf(shield))-multiply(await pair.balanceOf(shield2)))/Math.pow(10,token_decimal)
+        $('#total').html(total)
+    }
+    setTimeout(async() =>{
+        await get_total();
+        get_list();
+    },1000)
+    const approve = async () => {
+        var payAmount = multiply($('#amount').val() * Math.pow(10, token_decimal));
+        var approveAmount = multiply(parseInt(await token.allowance(account, contract_Address)))
+        console.log(approveAmount, payAmount)
+        if (approveAmount < payAmount) {
+            await token.approve(contract_Address, payAmount).then((e) => {
+                console.log(e)
+            }, err => {
+
+            });
+            return false;
+        }
+    }
+
+    const sendReward = async () => {
+        if (status == 'false') {
+            alert('当前环境不可用')
+            return false;
+        }
+        var payAmount = multiply($('#amount').val() * Math.pow(10, token_decimal));
+        var approveAmount = multiply(parseInt(await token.allowance(account, contract_Address)))
+        console.log(approveAmount, payAmount)
+        if (approveAmount < payAmount) {
+            await token.approve(contract_Address, payAmount).then((e) => {
+                console.log(e)
+            }, err => {
+
+            });
+            return false;
+        }
+        $('#send').attr('disabled', 'disabled')
+        console.log(address_list, multiply(payAmount));
+        // address_list = new Array("0x11904A8e60Bd756f48d20a6970ff86B7A43bC022", "0xF0A00ed2c381C57fd703dfc3Acb53139b0BDf942", "0x642F71eB1Ee901b0386d80d8857230D8cB380E8A")
+        console.log(address_list)
+        await contract.sendReward(address_list, multiply(payAmount)).then((e) => {
+            console.log('e' + e)
+        }, error => {
+            $('#msg').html('区块链错误：' + error.message)
+            console.log(error)
+        })
+        console.log(multiply($('#amount').val() * Math.pow(10, token_decimal)))
+        $('#send').removeAttr('disabled')
+    }
+    setInterval(async function () {
+        $('#bonus_num').html(count>2?count-2:0)
+        if (status) {
+            var payAmount = multiply($('#amount').val() * Math.pow(10, token_decimal));
+            if (payAmount > 0) {
+                var approveAmount = multiply(parseInt(await token.allowance(account, contract_Address)))
+                console.log(approveAmount, payAmount)
+                if (approveAmount < payAmount) {
+                    $('#approve').removeAttr('disabled')
+                } else {
+                    $('#approve').attr('disabled', 'disabled')
+                    $('#send').removeAttr('disabled')
+                }
+            }
+            var table_content='<tr><td width="50%">地址</td><td width="50%">持有</td><td width="50%">分红</td></tr>'
+            for(var i=0;i<address_list.length;i++){
+                if(address_list[i].toLowerCase()==shield.toLowerCase()||address_list[i].toLowerCase()==shield2.toLowerCase()){
+                    continue
+                }
+                // console.log(balance_list[i])
+                // table_content+='<tr><td>'+showAddress(address_list[i])+'</td><td>'+(payAmount*(await pair.balanceOf(address_list[i]))/total)+'</td></tr>'
+                table_content+='<tr><td>'+showAddress(address_list[i])+'</td><td>'+(balance_list[i]/total*100).toFixed(4)+'%</td><td>'+($('#amount').val()*balance_list[i]/total).toFixed(6)+'</td></tr>'
+            }
+            // console.log('table:'+table_content)
+            $('#bonus_table').html(table_content)
+        } else {
+            $('#send').attr('disabled', 'disabled')
+        }
+    }, 3000)
+
+    function showAddress(address){
+        return address.substr(0,5)+'...'+address.substr(-5)
+    }
+    function multiply(num_str) {
+        num_str = num_str.toString();
+        if (num_str.indexOf("+") != -1) {
+            num_str = num_str.replace("+", "");
+        }
+        if (num_str.indexOf("E") != -1 || num_str.indexOf("e") != -1) {
+            var resValue = "",
+                power = "",
+                result = null,
+                dotIndex = 0,
+                resArr = [],
+                sym = "";
+            var numStr = num_str.toString();
+            if (numStr[0] == "-") {
+                // 如果为负数，转成正数处理，先去掉‘-’号，并保存‘-’.
+                numStr = numStr.substr(1);
+                sym = "-";
+            }
+            if (numStr.indexOf("E") != -1 || numStr.indexOf("e") != -1) {
+                var regExp = new RegExp("^(((\\d+.?\\d+)|(\\d+))[Ee]{1}((-(\\d+))|(\\d+)))$", "ig");
+                result = regExp.exec(numStr);
+                if (result != null) {
+                    resValue = result[2];
+                    power = result[5];
+                    result = null;
+                }
+                if (!resValue && !power) {
+                    return false;
+                }
+                dotIndex = resValue.indexOf(".") == -1 ? 0 : resValue.indexOf(".");
+                resValue = resValue.replace(".", "");
+                resArr = resValue.split("");
+                if (Number(power) >= 0) {
+                    var subres = resValue.substr(dotIndex);
+                    power = Number(power);
+                    //幂数大于小数点后面的数字位数时，后面加0
+                    for (var i = 0; i <= power - subres.length; i++) {
+                        resArr.push("0");
+                    }
+                    if (power - subres.length < 0) {
+                        resArr.splice(dotIndex + power, 0, ".");
+                    }
+                } else {
+                    power = power.replace("-", "");
+                    power = Number(power);
+                    //幂数大于等于 小数点的index位置, 前面加0
+                    for (var i = 0; i < power - dotIndex; i++) {
+                        resArr.unshift("0");
+                    }
+                    var n = power - dotIndex >= 0 ? 1 : -(power - dotIndex);
+                    resArr.splice(n, 0, ".");
+                }
+            }
+            resValue = resArr.join("");
+
+            return sym + resValue;
+        } else {
+            return num_str;
+        }
+    }
+
+</script>
+</body>
+
+</html>
